@@ -16,7 +16,7 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h2>Choose Target Date for NFN CRQ</h2>
+    <h2>Choose Target Date for NFN Build/Cease CRQ</h2>
     <form method="POST">
         <input type="date" name="target_date" required>
         <button type="submit">Calculate</button>
