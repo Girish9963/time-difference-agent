@@ -1,67 +1,38 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, request, jsonify
+import pytz
 from datetime import datetime
- pytz
 
 app = Flask(__name__)
 
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>IST Time Difference Agent</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 50px; }
-        input, button { padding: 10px; font-size: 16px; }
-        .result { margin-top: 20px; font-weight: bold; color: #333; }
-    </style>
-</head>
-<body>
-    <h2>Choose Target Date</h2>
-    <form method="POST">
-        <input type="date" name="target_date" required>
-        <button type="submit">Calculate</button>
-    </form>
-    {% if target_datetime %}
-        <div class="result">
-            <p>Countdown to {{ target_datetime.strftime('%Y-%m-%d %H:%M:%S') }} IST:</p>
-            <div id="countdown"></div>
-        </div>
-        <script>
-            const targetTime = new Date("{{ target_datetime.strftime('%Y-%m-%dT%H:%M:%S') }}").getTime();
-            function updateCountdown() {
-                const now = new Date().getTime();
-                const diff = targetTime - now;
-                if (diff <= 0) {
-                    document.getElementById("countdown").innerHTML = "Target date has already passed.";
-                    return;
-                }
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                document.getElementById("countdown").innerHTML =
-                    days + " days, " + hours + " hours, " + minutes + " minutes, " + seconds + " seconds";
-            }
-            setInterval(updateCountdown, 1000);
-            updateCountdown();
-        </script>
-    {% endif %}
-</body>
-</html>
-"""
+@app.route("/")
+def home():
+    return "Time Difference Agent is running!"
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    target_datetime = None
-    if request.method == "POST":
-        target_date_str = request.form.get("target_date")
-        try:
-            ist = pytz.timezone('Asia/Kolkata')
-            target_date = datetime.strptime(target_date_str, "%Y-%m-%d")
-            target_datetime = ist.localize(target_date.replace(hour=23, minute=59, second=0))
-        except ValueError:
-            target_datetime = None
-    return render_template_string(HTML_TEMPLATE, target_datetime=target_datetime)
+@app.route("/time-difference", methods=["GET"])
+def time_difference():
+    # Get query parameters
+    tz1 = request.args.get("tz1", "Asia/Kolkata")
+    tz2 = request.args.get("tz2", "UTC")
+
+    try:
+        # Get current time in both time zones
+        now = datetime.now()
+        time1 = now.astimezone(pytz.timezone(tz1))
+        time2 = now.astimezone(pytz.timezone(tz2))
+
+        # Calculate difference in hours
+        diff_hours = (time1.utcoffset() - time2.utcoffset()).total_seconds() / 3600
+
+        return jsonify({
+            "timezone_1": tz1,
+            "timezone_2": tz2,
+            "time_in_tz1": time1.strftime("%Y-%m-%d %H:%M:%S"),
+            "time_in_tz2": time2.strftime("%Y-%m-%d %H:%M:%S"),
+            "difference_in_hours": diff_hours
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=5000)
